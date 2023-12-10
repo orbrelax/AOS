@@ -1,0 +1,105 @@
+1)
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+
+void signalHandler(int signum) {
+    // Empty signal handler
+}
+
+int main() {
+    pid_t childPid;
+
+    // Create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        signal(SIGCONT, signalHandler);
+
+        while (1) {
+            printf("Child process is running...\n");
+            sleep(1);
+        }
+    } else { // Parent process
+        // Wait for a moment before sending SIGSTOP to ensure the child is running
+        sleep(2);
+
+        // Send SIGSTOP to suspend the child process
+        kill(childPid, SIGSTOP);
+        printf("Parent: Child process suspended.\n");
+
+        // Wait for a moment before sending SIGCONT to ensure the child is suspended
+        sleep(2);
+
+        // Send SIGCONT to resume the child process
+        kill(childPid, SIGCONT);
+        printf("Parent: Child process resumed.\n");
+
+        // Let the child process run for a while
+        sleep(5);
+
+        // Send SIGTERM to terminate the child process
+        kill(childPid, SIGTERM);
+        printf("Parent: Child process terminated.\n");
+    }
+
+    return 0;
+}
+
+==========================================================
+2) Write a C program to Identify the type (Directory, character device, Block device, Regular file, FIFO or pipe, symbolic link or socket) of given file using stat() system call.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+void identifyFileType(const char *filename) {
+    struct stat fileInfo;
+
+    // Get file information using stat
+    if (stat(filename, &fileInfo) == -1) {
+        perror("Error getting file information");
+        exit(EXIT_FAILURE);
+    }
+
+    // Identify the file type based on the file mode
+    if (S_ISREG(fileInfo.st_mode)) {
+        printf("File: Regular File\n");
+    } else if (S_ISDIR(fileInfo.st_mode)) {
+        printf("File: Directory\n");
+    } else if (S_ISCHR(fileInfo.st_mode)) {
+        printf("File: Character Device\n");
+    } else if (S_ISBLK(fileInfo.st_mode)) {
+        printf("File: Block Device\n");
+    } else if (S_ISFIFO(fileInfo.st_mode)) {
+        printf("File: FIFO (Named Pipe)\n");
+    } else if (S_ISLNK(fileInfo.st_mode)) {
+        printf("File: Symbolic Link\n");
+    } else if (S_ISSOCK(fileInfo.st_mode)) {
+        printf("File: Socket\n");
+    } else {
+        printf("File: Unknown Type\n");
+    }
+}
+
+int main(int argc, char *argv[]) {
+    // Check if a filename is provided
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Identify the file type
+    identifyFileType(argv[1]);
+
+    return 0;
+}
