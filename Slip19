@@ -1,0 +1,124 @@
+1)Take multiple files as Command Line Arguments and print their file type and inode number
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+void printFileTypeAndInode(const char *filename) {
+    struct stat fileInfo;
+
+    // Get file information using stat
+    if (stat(filename, &fileInfo) == -1) {
+        perror("Error getting file information");
+        return;
+    }
+
+    // Print file type and inode number
+    printf("File: %s\n", filename);
+    printf("File Type: ");
+    switch (fileInfo.st_mode & S_IFMT) {
+        case S_IFREG:
+            printf("Regular File\n");
+            break;
+        case S_IFDIR:
+            printf("Directory\n");
+            break;
+        case S_IFLNK:
+            printf("Symbolic Link\n");
+            break;
+        case S_IFCHR:
+            printf("Character Device\n");
+            break;
+        case S_IFBLK:
+            printf("Block Device\n");
+            break;
+        case S_IFIFO:
+            printf("FIFO (Named Pipe)\n");
+            break;
+        case S_IFSOCK:
+            printf("Socket\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+    }
+
+    printf("Inode Number: %lu\n", (unsigned long)fileInfo.st_ino);
+    printf("\n");
+}
+
+int main(int argc, char *argv[]) {
+    // Check if at least one filename is provided
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <file1> [file2] [file3] ...\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Loop through command-line arguments and print file type and inode number
+    for (int i = 1; i < argc; i++) {
+        printFileTypeAndInode(argv[i]);
+    }
+
+    return 0;
+}
+
+===============================================================================
+2) Implement the following unix/linux command (use fork, pipe and exec system call)
+ls –l | wc –l
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+int main() {
+    int pipefd[2];
+    pid_t childPid;
+
+    // Create a pipe
+    if (pipe(pipefd) == -1) {
+        perror("Pipe creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        // Close the read end of the pipe
+        close(pipefd[0]);
+
+        // Redirect standard output to write to the pipe
+        dup2(pipefd[1], STDOUT_FILENO);
+
+        // Execute ls -l command
+        execlp("ls", "ls", "-l", (char *)NULL);
+
+        // If exec fails
+        perror("Exec failed");
+        exit(EXIT_FAILURE);
+    } else { // Parent process
+        // Close the write end of the pipe
+        close(pipefd[1]);
+
+        // Redirect standard input to read from the pipe
+        dup2(pipefd[0], STDIN_FILENO);
+
+        // Execute wc -l command
+        execlp("wc", "wc", "-l", (char *)NULL);
+
+        // If exec fails
+        perror("Exec failed");
+        exit(EXIT_FAILURE);
+    }
+
+    return 0;
+}
