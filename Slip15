@@ -1,0 +1,121 @@
+1)Display all the files from current directory whose size is greater that n Bytes Where n is accept from user
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <sys/stat.h>
+
+void filterFilesBySize(int sizeThreshold) {
+    DIR *dir;
+    struct dirent *entry;
+
+    // Open the current directory
+    dir = opendir(".");
+
+    if (dir == NULL) {
+        perror("Error opening directory");
+        exit(EXIT_FAILURE);
+    }
+
+    // Iterate through directory entries
+    while ((entry = readdir(dir)) != NULL) {
+        // Get file information
+        struct stat fileInfo;
+        if (stat(entry->d_name, &fileInfo) == -1) {
+            perror("Error getting file information");
+            continue;
+        }
+
+        // Check if the entry is a regular file and its size is greater than the threshold
+        if (entry->d_type == DT_REG && fileInfo.st_size > sizeThreshold) {
+            printf("%s - Size: %ld bytes\n", entry->d_name, fileInfo.st_size);
+        }
+    }
+
+    // Close the directory
+    closedir(dir);
+}
+
+int main() {
+    int sizeThreshold;
+
+    // Get user input for size threshold
+    printf("Enter size threshold in bytes: ");
+    scanf("%d", &sizeThreshold);
+
+    // Print files with size greater than the specified threshold
+    printf("Files with size greater than %d bytes:\n", sizeThreshold);
+    filterFilesBySize(sizeThreshold);
+
+    return 0;
+}
+
+=================================================================
+2)Write a C program which creates a child process to run linux/ unix command or any user defined program. The parent process set the signal handler for death of child signal and Alarm signal. If a child process does not complete its execution in 5 second then parent process kills child process
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+void childHandler(int signum) {
+    if (signum == SIGCHLD) {
+        printf("Child process has terminated.\n");
+    }
+}
+
+void alarmHandler(int signum) {
+    if (signum == SIGALRM) {
+        printf("Parent process: Child process execution time exceeded 5 seconds. Killing the child.\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <command> [args...]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    pid_t childPid;
+    int status;
+
+    // Set up signal handlers
+    signal(SIGCHLD, childHandler);
+    signal(SIGALRM, alarmHandler);
+
+    // Create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        // Execute the specified command in the child process
+        if (execvp(argv[1], &argv[1]) == -1) {
+            perror("Exec failed");
+            exit(EXIT_FAILURE);
+        }
+    } else { // Parent process
+        // Set an alarm for 5 seconds
+        alarm(5);
+
+        // Wait for the child process to finish
+        waitpid(childPid, &status, 0);
+
+        // Cancel the alarm
+        alarm(0);
+
+        // Check if the child process terminated normally
+        if (WIFEXITED(status)) {
+            printf("Parent process: Child process exited with status %d\n", WEXITSTATUS(status));
+        } else {
+            printf("Parent process: Child process terminated abnormally\n");
+        }
+    }
+
+    return 0;
+}
