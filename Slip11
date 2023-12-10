@@ -1,0 +1,95 @@
+1)Write a C program to get and set the resource limits such as files, memory associated with a process
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/resource.h>
+
+void displayResourceLimits() {
+    struct rlimit rlim;
+
+    // Get the current resource limits for files
+    if (getrlimit(RLIMIT_NOFILE, &rlim) == -1) {
+        perror("getrlimit failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Current file soft limit: %ld\n", rlim.rlim_cur);
+    printf("Current file hard limit: %ld\n", rlim.rlim_max);
+}
+
+void setResourceLimits(rlim_t newSoftLimit, rlim_t newHardLimit) {
+    struct rlimit rlim;
+
+    // Get the current resource limits for files
+    if (getrlimit(RLIMIT_NOFILE, &rlim) == -1) {
+        perror("getrlimit failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Modify the soft limit if needed
+    if (newSoftLimit != rlim.rlim_cur) {
+        rlim.rlim_cur = newSoftLimit;
+    }
+
+    // Modify the hard limit if needed
+    if (newHardLimit != rlim.rlim_max) {
+        rlim.rlim_max = newHardLimit;
+    }
+
+    // Set the new resource limits for files
+    if (setrlimit(RLIMIT_NOFILE, &rlim) == -1) {
+        perror("setrlimit failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("New file soft limit: %ld\n", rlim.rlim_cur);
+    printf("New file hard limit: %ld\n", rlim.rlim_max);
+}
+
+int main() {
+    printf("Current Resource Limits:\n");
+    displayResourceLimits();
+
+    // Set new resource limits
+    printf("\nSetting New Resource Limits:\n");
+    setResourceLimits(50, 100);
+
+    return 0;
+}
+
+====================================================================================
+2)Write a C program that redirects standard output to a file output.txt. (use of dup and open system call).
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+int main() {
+    // Open or create the output.txt file for writing
+    int fileDescriptor = open("output.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+    if (fileDescriptor == -1) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    // Duplicate the file descriptor to standard output (stdout)
+    if (dup2(fileDescriptor, STDOUT_FILENO) == -1) {
+        perror("Error duplicating file descriptor");
+        close(fileDescriptor);
+        exit(EXIT_FAILURE);
+    }
+
+    // Close the original file descriptor
+    close(fileDescriptor);
+
+    // Now, standard output is redirected to the output.txt file
+
+    // Print to stdout (which is now the file)
+    printf("This line will be written to the file.\n");
+    printf("Redirection is working!\n");
+
+    // Close stdout (optional)
+    close(STDOUT_FILENO);
+
+    return 0;
+}
