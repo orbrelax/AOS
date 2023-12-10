@@ -1,0 +1,131 @@
+1) Write a C Program that demonstrates redirection of standard output to a file
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+int main() {
+    // Save the current standard output file descriptor
+    int originalStdout = dup(STDOUT_FILENO);
+
+    // Open or create a file for writing, with read and write permissions
+    int fileDescriptor = open("output.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+
+    if (fileDescriptor == -1) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    // Redirect standard output to the file
+    if (dup2(fileDescriptor, STDOUT_FILENO) == -1) {
+        perror("Error redirecting standard output");
+        close(fileDescriptor);
+        exit(EXIT_FAILURE);
+    }
+
+    // Close the file descriptor as it is no longer needed
+    close(fileDescriptor);
+
+    // Now, standard output is redirected to the file
+    printf("This message will be written to output.txt\n");
+
+    // Restore the original standard output
+    if (dup2(originalStdout, STDOUT_FILENO) == -1) {
+        perror("Error restoring original standard output");
+        close(originalStdout);
+        exit(EXIT_FAILURE);
+    }
+
+    // Close the original standard output file descriptor
+    close(originalStdout);
+
+    // Now, standard output is restored to the console
+    printf("This message will be displayed on the console\n");
+
+    return 0;
+}
+
+========================================================================
+2) Write a C program to implement the following unix/linux command (use fork, pipe and exec system call). Your program should block the signal Ctrl-C and Ctrl-\ signal during the execution. i. ls –l | wc –l
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+
+void signalHandler(int signum) {
+    // Empty signal handler
+}
+
+int main() {
+    // Set up signal handlers to block Ctrl-C and Ctrl-\ signals
+    signal(SIGINT, signalHandler);
+    signal(SIGQUIT, signalHandler);
+
+    int pipefd[2];
+    pid_t lsPid, wcPid;
+
+    // Create a pipe
+    if (pipe(pipefd) == -1) {
+        perror("Pipe creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create a child process for ls -l
+    lsPid = fork();
+
+    if (lsPid == -1) {
+        perror("Fork for ls failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (lsPid == 0) { // Child process for ls -l
+        // Close the read end of the pipe
+        close(pipefd[0]);
+
+        // Redirect standard output to write to the pipe
+        dup2(pipefd[1], STDOUT_FILENO);
+
+        // Execute ls -l command
+        execlp("ls", "ls", "-l", (char *)NULL);
+
+        // If exec fails
+        perror("Exec ls failed");
+        exit(EXIT_FAILURE);
+    } else { // Parent process
+        // Create a child process for wc -l
+        wcPid = fork();
+
+        if (wcPid == -1) {
+            perror("Fork for wc failed");
+            exit(EXIT_FAILURE);
+        }
+
+        if (wcPid == 0) { // Child process for wc -l
+            // Close the write end of the pipe
+            close(pipefd[1]);
+
+            // Redirect standard input to read from the pipe
+            dup2(pipefd[0], STDIN_FILENO);
+
+            // Execute wc -l command
+            execlp("wc", "wc", "-l", (char *)NULL);
+
+            // If exec fails
+            perror("Exec wc failed");
+            exit(EXIT_FAILURE);
+        } else { // Parent process
+            // Close both ends of the pipe as they are no longer needed
+            close(pipefd[0]);
+            close(pipefd[1]);
+
+            // Wait for both child processes to finish
+            waitpid(lsPid, NULL, 0);
+            waitpid(wcPid, NULL, 0);
+        }
+    }
+
+    return 0;
+}
