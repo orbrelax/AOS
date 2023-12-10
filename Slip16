@@ -1,0 +1,125 @@
+1) Display all the files from current directory which are created in particular month
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <time.h>
+
+void filterFilesByMonth(int targetMonth) {
+    DIR *dir;
+    struct dirent *entry;
+
+    // Open the current directory
+    dir = opendir(".");
+
+    if (dir == NULL) {
+        perror("Error opening directory");
+        exit(EXIT_FAILURE);
+    }
+
+    // Iterate through directory entries
+    while ((entry = readdir(dir)) != NULL) {
+        // Get file information
+        struct stat fileInfo;
+        if (stat(entry->d_name, &fileInfo) == -1) {
+            perror("Error getting file information");
+            continue;
+        }
+
+        // Check if the entry is a regular file and its creation month matches the target month
+        if (entry->d_type == DT_REG) {
+            struct tm *creationTime = localtime(&fileInfo.st_ctime);
+
+            if (creationTime->tm_mon + 1 == targetMonth) {  // tm_mon is 0-based
+                printf("%s\n", entry->d_name);
+            }
+        }
+    }
+
+    // Close the directory
+    closedir(dir);
+}
+
+int main() {
+    int targetMonth;
+
+    // Get user input for the target month
+    printf("Enter the target month (1-12): ");
+    scanf("%d", &targetMonth);
+
+    // Validate the target month
+    if (targetMonth < 1 || targetMonth > 12) {
+        fprintf(stderr, "Invalid month. Please enter a number between 1 and 12.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Print files created in the specified month
+    printf("Files created in month %d:\n", targetMonth);
+    filterFilesByMonth(targetMonth);
+
+    return 0;
+}
+
+==========================================================================
+2)Write a C program which create a child process which catch a signal sighup, sigint and sigquit. The Parent process send a sighup or sigint signal after every 3 seconds, at the end of 30 second parent send sigquit signal to child and child terminates my displaying message “My DADDY has Killed me!!!”.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+void childSignalHandler(int signum) {
+    if (signum == SIGHUP) {
+        printf("Child Process: Received SIGHUP signal\n");
+    } else if (signum == SIGINT) {
+        printf("Child Process: Received SIGINT signal\n");
+    } else if (signum == SIGQUIT) {
+        printf("Child Process: My DADDY has Killed me!!!\n");
+        exit(EXIT_SUCCESS);
+    }
+}
+
+int main() {
+    pid_t childPid;
+
+    // Create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        // Set signal handlers for SIGHUP, SIGINT, and SIGQUIT
+        signal(SIGHUP, childSignalHandler);
+        signal(SIGINT, childSignalHandler);
+        signal(SIGQUIT, childSignalHandler);
+
+        // Child process continues running and handling signals
+        while (1) {
+            sleep(1); // Sleep to allow signal handling
+        }
+    } else { // Parent process
+        // Send SIGHUP or SIGINT signals every 3 seconds for 30 seconds
+        for (int i = 0; i < 30; i += 3) {
+            sleep(3);
+            if (i % 2 == 0) {
+                kill(childPid, SIGHUP);
+            } else {
+                kill(childPid, SIGINT);
+            }
+        }
+
+        // Send SIGQUIT signal to child after 30 seconds
+        kill(childPid, SIGQUIT);
+
+        // Wait for the child process to terminate
+        waitpid(childPid, NULL, 0);
+    }
+
+    return 0;
+}
