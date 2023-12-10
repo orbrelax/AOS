@@ -1,0 +1,100 @@
+1) Write a C program that print the exit status of a terminated child process
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+int main() {
+    pid_t childPid, terminatedPid;
+    int status;
+
+    // Create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        printf("Child Process: PID = %d\n", getpid());
+        // Perform some work in the child process
+        sleep(2);
+        exit(EXIT_SUCCESS);
+    } else { // Parent process
+        printf("Parent Process: PID = %d\n", getpid());
+
+        // Wait for the child process to finish
+        terminatedPid = waitpid(childPid, &status, 0);
+
+        if (terminatedPid == -1) {
+            perror("Waitpid failed");
+            exit(EXIT_FAILURE);
+        }
+
+        // Check if the child process terminated normally
+        if (WIFEXITED(status)) {
+            printf("Child Process %d terminated with exit status: %d\n", terminatedPid, WEXITSTATUS(status));
+        } else {
+            printf("Child Process %d terminated abnormally\n", terminatedPid);
+        }
+    }
+
+    return 0;
+}
+
+=============================================================
+2)Write a C program which receives file names as command line arguments and display those filenames in ascending order according to their sizes. I) (e.g $ a.out a.txt b.txt c.txt, …)
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#define MAX_FILES 100
+
+typedef struct {
+    char *filename;
+    off_t size;
+} FileEntry;
+
+int compareFileEntries(const void *a, const void *b) {
+    return ((FileEntry *)a)->size - ((FileEntry *)b)->size;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <file1> <file2> ... <fileN>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Create an array of FileEntry structures to store file information
+    FileEntry files[MAX_FILES];
+
+    // Initialize the array with file names and sizes
+    for (int i = 1; i < argc && i <= MAX_FILES; ++i) {
+        files[i - 1].filename = argv[i];
+
+        struct stat fileInfo;
+        if (stat(argv[i], &fileInfo) == -1) {
+            perror("Error getting file information");
+            exit(EXIT_FAILURE);
+        }
+
+        files[i - 1].size = fileInfo.st_size;
+    }
+
+    // Sort the array of FileEntry structures based on file sizes
+    qsort(files, argc - 1, sizeof(FileEntry), compareFileEntries);
+
+    // Display the file names in ascending order according to sizes
+    printf("Files sorted by size in ascending order:\n");
+    for (int i = 0; i < argc - 1 && i < MAX_FILES; ++i) {
+        printf("%s - Size: %ld bytes\n", files[i].filename, files[i].size);
+    }
+
+    return 0;
+}
