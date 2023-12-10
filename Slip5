@@ -1,0 +1,106 @@
+1)Read the current directory and display the name of the files, no of files in current directory
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+
+int main() {
+    DIR *dir;
+    struct dirent *entry;
+
+    // Open the current directory
+    dir = opendir(".");
+
+    if (dir == NULL) {
+        perror("Error opening current directory");
+        exit(EXIT_FAILURE);
+    }
+
+    // Count of files in the current directory
+    int fileCount = 0;
+
+    // Read directory entries
+    while ((entry = readdir(dir)) != NULL) {
+        // Ignore "." and ".." entries
+        if (entry->d_type != DT_DIR) {
+            printf("%s\n", entry->d_name);
+            fileCount++;
+        }
+    }
+
+    // Close the directory
+    closedir(dir);
+
+    // Display the total number of files
+    printf("\nTotal number of files in the current directory: %d\n", fileCount);
+
+    return 0;
+}
+
+-------------------------------------------------------------------------------------------
+2)Write a C program to create an unnamed pipe. The child process will write following three messages to pipe and parent process display it.
+Message1 = “Hello World”
+Message2 = “Hello SPPU”
+Message3 = “Linux is Funny”
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#define BUFFER_SIZE 100
+
+int main() {
+    int pipefd[2]; // File descriptors for the pipe
+    pid_t childPid;
+
+    // Create the pipe
+    if (pipe(pipefd) == -1) {
+        perror("Pipe creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        // Close the read end of the pipe
+        close(pipefd[0]);
+
+        // Write messages to the pipe
+        const char *messages[] = {"Hello World\n", "Hello SPPU\n", "Linux is Funny\n"};
+
+        for (int i = 0; i < 3; ++i) {
+            write(pipefd[1], messages[i], strlen(messages[i]));
+        }
+
+        // Close the write end of the pipe
+        close(pipefd[1]);
+
+        exit(EXIT_SUCCESS);
+    } else { // Parent process
+        // Close the write end of the pipe
+        close(pipefd[1]);
+
+        char buffer[BUFFER_SIZE];
+        ssize_t bytesRead;
+
+        // Read and display messages from the pipe
+        while ((bytesRead = read(pipefd[0], buffer, BUFFER_SIZE)) > 0) {
+            write(STDOUT_FILENO, buffer, bytesRead);
+        }
+
+        // Close the read end of the pipe
+        close(pipefd[0]);
+
+        // Wait for the child process to finish
+        wait(NULL);
+    }
+
+    return 0;
+}
+
