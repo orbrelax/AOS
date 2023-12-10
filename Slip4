@@ -1,0 +1,103 @@
+1)Write a C program to find whether a given files passed through command line arguments are present in current directory or not.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+void checkFileExistence(char *filename) {
+    struct stat fileInfo;
+
+    // Get file information
+    if (stat(filename, &fileInfo) == 0) {
+        printf("File '%s' is present in the current directory.\n", filename);
+    } else {
+        printf("File '%s' is not present in the current directory.\n", filename);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    // Check if filenames are provided
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <file1> <file2> ... <fileN>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Process each filename
+    for (int i = 1; i < argc; ++i) {
+        checkFileExistence(argv[i]);
+    }
+
+    return 0;
+}
+------------------------------------------------------------------------
+2)Write a C program which creates a child process and child process catches a signal SIGHUP, SIGINT and SIGQUIT. The Parent process send a SIGHUP or SIGINT signal after every 3 seconds, at the end of 15 second parent send SIGQUIT signal to child and child terminates by displaying message "My Papa has Killed me!!!”.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+
+pid_t childPid; // Global variable to store the child process ID
+
+// Signal handler for SIGHUP
+void sighupHandler(int signum) {
+    printf("Child process: Received SIGHUP signal\n");
+}
+
+// Signal handler for SIGINT
+void sigintHandler(int signum) {
+    printf("Child process: Received SIGINT signal\n");
+}
+
+// Signal handler for SIGQUIT
+void sigquitHandler(int signum) {
+    printf("Child process: My Papa has Killed me!!!\n");
+    exit(EXIT_SUCCESS);
+}
+
+int main() {
+    // Create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        // Set up signal handlers for SIGHUP, SIGINT, and SIGQUIT
+        signal(SIGHUP, sighupHandler);
+        signal(SIGINT, sigintHandler);
+        signal(SIGQUIT, sigquitHandler);
+
+        printf("Child process is running...\n");
+
+        // Infinite loop to keep the child process running
+        while (1) {
+            // Do nothing
+        }
+    } else { // Parent process
+        // Parent sends SIGHUP or SIGINT every 3 seconds for 12 seconds
+        for (int i = 0; i < 4; ++i) {
+            sleep(3);
+            if (i % 2 == 0) {
+                kill(childPid, SIGHUP);
+            } else {
+                kill(childPid, SIGINT);
+            }
+        }
+
+        // After 15 seconds, parent sends SIGQUIT
+        sleep(3);
+        printf("Parent process: Sending SIGQUIT to child...\n");
+        kill(childPid, SIGQUIT);
+
+        // Wait for the child process to finish
+        wait(NULL);
+        printf("Parent process: Child process terminated.\n");
+    }
+
+    return 0;
+}
