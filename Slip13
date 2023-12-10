@@ -1,0 +1,90 @@
+1)Write a C program that illustrates suspending and resuming processes using signals
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
+
+// Signal handler for SIGTSTP (Ctrl-Z)
+void suspendHandler(int signum) {
+    printf("Process %d received SIGTSTP - Suspending...\n", getpid());
+    raise(SIGSTOP); // Suspend the process
+}
+
+// Signal handler for SIGCONT (resume)
+void resumeHandler(int signum) {
+    printf("Process %d received SIGCONT - Resuming...\n", getpid());
+}
+
+int main() {
+    // Register signal handlers
+    if (signal(SIGTSTP, suspendHandler) == SIG_ERR) {
+        perror("Error setting up SIGTSTP handler");
+        exit(EXIT_FAILURE);
+    }
+
+    if (signal(SIGCONT, resumeHandler) == SIG_ERR) {
+        perror("Error setting up SIGCONT handler");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Process %d is running. Press Ctrl-Z to suspend.\n", getpid());
+
+    while (1) {
+        // Simulate some work
+        sleep(1);
+        printf("Process %d is running...\n", getpid());
+    }
+
+    return 0;
+}
+
+
+=======================================================
+2)Write a C program that a string as an argument and return all the files that begins with that name in the current directory. For example > ./a.out foo will return all file names that begins with foo
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <string.h>
+
+void filterFiles(const char *prefix) {
+    DIR *dir;
+    struct dirent *entry;
+
+    // Open the current directory
+    dir = opendir(".");
+
+    if (dir == NULL) {
+        perror("Error opening directory");
+        exit(EXIT_FAILURE);
+    }
+
+    // Iterate through directory entries
+    while ((entry = readdir(dir)) != NULL) {
+        // Check if the entry is a regular file and its name starts with the specified prefix
+        if (entry->d_type == DT_REG && strncmp(prefix, entry->d_name, strlen(prefix)) == 0) {
+            printf("%s\n", entry->d_name);
+        }
+    }
+
+    // Close the directory
+    closedir(dir);
+}
+
+int main(int argc, char *argv[]) {
+    // Check if a prefix is provided as a command-line argument
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <prefix>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Get the prefix from the command-line argument
+    const char *prefix = argv[1];
+
+    // Print files with the specified prefix
+    printf("Files with prefix \"%s\":\n", prefix);
+    filterFiles(prefix);
+
+    return 0;
+}
