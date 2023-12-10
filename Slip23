@@ -1,0 +1,76 @@
+1)Write a C program to find whether a given file is present in current directory or not
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    const char *filename = argv[1];
+
+    // Try to open the file for reading
+    FILE *file = fopen(filename, "r");
+
+    if (file != NULL) {
+        printf("File '%s' is present in the current directory.\n", filename);
+        fclose(file);
+    } else {
+        printf("File '%s' is not present in the current directory.\n", filename);
+    }
+
+    return 0;
+}
+
+===============================================================================
+2)Write a C program to Identify the type (Directory, character device, Block device, Regular file, FIFO or pipe, symbolic link or socket) of given file using stat() system call.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+void identifyFileType(const char *filename) {
+    struct stat fileInfo;
+
+    // Get file information using stat
+    if (stat(filename, &fileInfo) == -1) {
+        perror("Error getting file information");
+        exit(EXIT_FAILURE);
+    }
+
+    // Identify the file type based on the file mode
+    if (S_ISREG(fileInfo.st_mode)) {
+        printf("File: Regular File\n");
+    } else if (S_ISDIR(fileInfo.st_mode)) {
+        printf("File: Directory\n");
+    } else if (S_ISCHR(fileInfo.st_mode)) {
+        printf("File: Character Device\n");
+    } else if (S_ISBLK(fileInfo.st_mode)) {
+        printf("File: Block Device\n");
+    } else if (S_ISFIFO(fileInfo.st_mode)) {
+        printf("File: FIFO (Named Pipe)\n");
+    } else if (S_ISLNK(fileInfo.st_mode)) {
+        printf("File: Symbolic Link\n");
+    } else if (S_ISSOCK(fileInfo.st_mode)) {
+        printf("File: Socket\n");
+    } else {
+        printf("File: Unknown Type\n");
+    }
+}
+
+int main(int argc, char *argv[]) {
+    // Check if a filename is provided
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Identify the file type
+    identifyFileType(argv[1]);
+
+    return 0;
+}
