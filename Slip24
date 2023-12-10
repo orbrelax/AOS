@@ -1,0 +1,131 @@
+1)Print the type of file and inode number where file name accepted through Command Line
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+void printFileTypeAndInode(const char *filename) {
+    struct stat fileInfo;
+
+    // Get file information using stat
+    if (stat(filename, &fileInfo) == -1) {
+        perror("Error getting file information");
+        exit(EXIT_FAILURE);
+    }
+
+    // Print file type and inode number
+    printf("File: %s\n", filename);
+    printf("File Type: ");
+    switch (fileInfo.st_mode & S_IFMT) {
+        case S_IFREG:
+            printf("Regular File\n");
+            break;
+        case S_IFDIR:
+            printf("Directory\n");
+            break;
+        case S_IFLNK:
+            printf("Symbolic Link\n");
+            break;
+        case S_IFCHR:
+            printf("Character Device\n");
+            break;
+        case S_IFBLK:
+            printf("Block Device\n");
+            break;
+        case S_IFIFO:
+            printf("FIFO (Named Pipe)\n");
+            break;
+        case S_IFSOCK:
+            printf("Socket\n");
+            break;
+        default:
+            printf("Unknown\n");
+            break;
+    }
+
+    printf("Inode Number: %lu\n", (unsigned long)fileInfo.st_ino);
+}
+
+int main(int argc, char *argv[]) {
+    // Check if a filename is provided
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Print file type and inode number
+    printFileTypeAndInode(argv[1]);
+
+    return 0;
+}
+
+================================================================================
+2)Write a C program which creates a child process to run linux/ unix command or any user defined program. The parent process set the signal handler for death of child signal and Alarm signal. If a child process does not complete its execution in 5 second then parent process kills child process
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+
+pid_t childPid;
+
+void childSignalHandler(int signum) {
+    if (signum == SIGCHLD) {
+        printf("Child process has terminated.\n");
+        exit(EXIT_SUCCESS);
+    }
+}
+
+void alarmSignalHandler(int signum) {
+    if (signum == SIGALRM) {
+        printf("Parent process: Child process did not complete in 5 seconds. Killing the child.\n");
+        kill(childPid, SIGKILL);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    // Check if a command is provided
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <command> [arg1] [arg2] ...\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Set up the signal handler for SIGCHLD
+    signal(SIGCHLD, childSignalHandler);
+
+    // Set up the signal handler for SIGALRM
+    signal(SIGALRM, alarmSignalHandler);
+
+    // Fork to create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        // Execute the provided command in the child process
+        execvp(argv[1], &argv[1]);
+
+        // If exec fails
+        perror("Exec failed");
+        exit(EXIT_FAILURE);
+    } else { // Parent process
+        // Set an alarm for 5 seconds
+        alarm(5);
+
+        // Wait for the child process to terminate
+        wait(NULL);
+
+        // Cancel the alarm
+        alarm(0);
+    }
+
+    return 0;
+}
+
+
