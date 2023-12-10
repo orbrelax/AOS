@@ -1,0 +1,109 @@
+1)Display all the files from current directory which are created in particular month
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <time.h>
+
+int main() {
+    DIR *dir;
+    struct dirent *entry;
+    struct stat fileInfo;
+    time_t currentTime;
+    struct tm *timeInfo;
+
+    // Open the current directory
+    dir = opendir(".");
+
+    if (dir == NULL) {
+        perror("Error opening current directory");
+        exit(EXIT_FAILURE);
+    }
+
+    // Get the current time
+    time(&currentTime);
+    timeInfo = localtime(&currentTime);
+
+    // Set the target month (e.g., January)
+    int targetMonth = 1;
+
+    // Read directory entries
+    while ((entry = readdir(dir)) != NULL) {
+        // Ignore "." and ".." entries
+        if (entry->d_type != DT_DIR) {
+            // Get file information
+            if (stat(entry->d_name, &fileInfo) == 0) {
+                // Check if the file was created in the target month
+                if (timeInfo->tm_mon + 1 == targetMonth) {
+                    printf("%s\n", entry->d_name);
+                }
+            } else {
+                perror("Error getting file information");
+            }
+        }
+    }
+
+    // Close the directory
+    closedir(dir);
+
+    return 0;
+}
+
+===============================================================================================
+2)Write a C program to create n child processes. When all n child processes terminates, Display total cumulative time children spent in user and kernel mode
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/resource.h>
+
+int main() {
+    int n = 5; // Number of child processes
+    pid_t childPid;
+    struct rusage usage;
+    struct timeval userTime, sysTime;
+
+    // Create n child processes
+    for (int i = 0; i < n; ++i) {
+        childPid = fork();
+
+        if (childPid == -1) {
+            perror("Fork failed");
+            exit(EXIT_FAILURE);
+        }
+
+        if (childPid == 0) { // Child process
+            // Child-specific code
+            printf("Child process %d (PID: %d) is running\n", i + 1, getpid());
+            sleep(2); // Simulating some work in the child process
+            exit(EXIT_SUCCESS);
+        }
+    }
+
+    // Wait for all child processes to terminate
+    while (n > 0) {
+        wait(NULL);
+        n--;
+    }
+
+    // Get resource usage information for the children
+    if (getrusage(RUSAGE_CHILDREN, &usage) == -1) {
+        perror("getrusage failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Calculate and display total cumulative time in user and kernel mode
+    userTime = usage.ru_utime;
+    sysTime = usage.ru_stime;
+
+    printf("Total cumulative time in user mode: %ld seconds %ld microseconds\n",
+           userTime.tv_sec, userTime.tv_usec);
+    printf("Total cumulative time in kernel mode: %ld seconds %ld microseconds\n",
+           sysTime.tv_sec, sysTime.tv_usec);
+
+    return 0;
+}
