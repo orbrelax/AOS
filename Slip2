@@ -1,0 +1,82 @@
+1) Write a C program to find file properties such as inode number, number of hard link, File permissions, File size, File access and modification time and so on of a given file using stat() system call.
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <time.h>
+
+void printFileProperties(char *filename) {
+    struct stat fileInfo;
+
+    // Get file information
+    if (stat(filename, &fileInfo) == -1) {
+        perror("Error getting file information");
+        exit(EXIT_FAILURE);
+    }
+
+    // Print file properties
+    printf("File: %s\n", filename);
+    printf("Inode number: %ld\n", (long)fileInfo.st_ino);
+    printf("Number of hard links: %ld\n", (long)fileInfo.st_nlink);
+    printf("File permissions: %o\n", fileInfo.st_mode & 0777);
+    printf("File size: %ld bytes\n", (long)fileInfo.st_size);
+
+    // Convert time to string format
+    char accessTime[20];
+    char modificationTime[20];
+    strftime(accessTime, sizeof(accessTime), "%Y-%m-%d %H:%M:%S", localtime(&fileInfo.st_atime));
+    strftime(modificationTime, sizeof(modificationTime), "%Y-%m-%d %H:%M:%S", localtime(&fileInfo.st_mtime));
+
+    printf("Last access time: %s\n", accessTime);
+    printf("Last modification time: %s\n", modificationTime);
+
+    printf("\n");
+}
+
+int main(int argc, char *argv[]) {
+    // Check if a filename is provided
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Process the provided filename
+    printFileProperties(argv[1]);
+
+    return 0;
+}
+
+2)Write a C program that catches the ctrl-c (SIGINT) signal for the first time and display the appropriate message and exits on pressing ctrl-c again.
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+
+// Global variable to track the number of times Ctrl-C is pressed
+int ctrlCPressed = 0;
+
+// Signal handler function for SIGINT
+void sigintHandler(int signum) {
+    if (ctrlCPressed == 0) {
+        printf("Ctrl-C pressed. Press again to exit.\n");
+        ctrlCPressed = 1;
+    } else {
+        printf("Exiting...\n");
+        exit(EXIT_SUCCESS);
+    }
+}
+
+int main() {
+    // Set up signal handler for SIGINT
+    signal(SIGINT, sigintHandler);
+
+    printf("Press Ctrl-C to trigger the signal handler.\n");
+
+    // Infinite loop to keep the program running
+    while (1) {
+        // Do nothing, wait for Ctrl-C
+    }
+
+    return 0;
+}
+
