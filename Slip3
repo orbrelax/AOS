@@ -1,0 +1,126 @@
+1)Print the type of file and inode number where file name accepted through Command Line
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+void printFileTypeAndInode(char *filename) {
+    struct stat fileInfo;
+
+    // Get file information
+    if (stat(filename, &fileInfo) == -1) {
+        perror("Error getting file information");
+        exit(EXIT_FAILURE);
+    }
+
+    // Print file type
+    if (S_ISREG(fileInfo.st_mode)) {
+        printf("File type: Regular file\n");
+    } else if (S_ISDIR(fileInfo.st_mode)) {
+        printf("File type: Directory\n");
+    } else if (S_ISCHR(fileInfo.st_mode)) {
+        printf("File type: Character special file\n");
+    } else if (S_ISBLK(fileInfo.st_mode)) {
+        printf("File type: Block special file\n");
+    } else if (S_ISFIFO(fileInfo.st_mode)) {
+        printf("File type: FIFO or pipe\n");
+    } else if (S_ISLNK(fileInfo.st_mode)) {
+        printf("File type: Symbolic link\n");
+    } else if (S_ISSOCK(fileInfo.st_mode)) {
+        printf("File type: Socket\n");
+    } else {
+        printf("File type: Unknown\n");
+    }
+
+    // Print inode number
+    printf("Inode number: %ld\n", (long)fileInfo.st_ino);
+}
+
+int main(int argc, char *argv[]) {
+    // Check if a filename is provided
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Process the provided filename
+    printFileTypeAndInode(argv[1]);
+
+    return 0;
+}
+------------------------------------------------------------------------------------
+2)Write a C program which creates a child process to run linux/ unix command or any user defined program. The parent process set the signal handler for death of child signal and Alarm signal. If a child process does not complete its execution in 5 second then parent process kills child process.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <signal.h>
+
+pid_t childPid; // Global variable to store the child process ID
+
+// Signal handler for SIGCHLD
+void sigchldHandler(int signum) {
+    int status;
+    pid_t terminatedChildPid;
+
+    // Wait for the child process to finish
+    while ((terminatedChildPid = waitpid(-1, &status, WNOHANG)) > 0) {
+        if (WIFEXITED(status)) {
+            printf("Child process %d exited with status %d\n", terminatedChildPid, WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+            printf("Child process %d terminated by signal %d\n", terminatedChildPid, WTERMSIG(status));
+        }
+    }
+}
+
+// Signal handler for SIGALRM
+void sigalrmHandler(int signum) {
+    // Kill the child process
+    if (childPid > 0) {
+        printf("Parent process: Child process is taking too long. Killing...\n");
+        kill(childPid, SIGKILL);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    // Check if a command is provided
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <command>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Set up signal handler for SIGCHLD
+    signal(SIGCHLD, sigchldHandler);
+
+    // Set up signal handler for SIGALRM
+    signal(SIGALRM, sigalrmHandler);
+
+    // Set an alarm for 5 seconds
+    alarm(5);
+
+    // Create a child process
+    childPid = fork();
+
+    if (childPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (childPid == 0) { // Child process
+        // Execute the provided command
+        if (execvp(argv[1], &argv[1]) == -1) {
+            perror("Execvp failed");
+            exit(EXIT_FAILURE);
+        }
+    } else { // Parent process
+        // Wait for the child process to finish
+        waitpid(childPid, NULL, 0);
+
+        printf("Parent process: Child process completed.\n");
+    }
+
+    return 0;
+}
