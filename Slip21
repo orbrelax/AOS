@@ -1,0 +1,99 @@
+1) Read the current directory and display the name of the files, no of files in current directory
+#include <stdio.h>
+#include <stdlib.h>
+#include <dirent.h>
+
+int main() {
+    DIR *dir;
+    struct dirent *entry;
+
+    // Open the current directory
+    dir = opendir(".");
+
+    if (dir == NULL) {
+        perror("Error opening directory");
+        exit(EXIT_FAILURE);
+    }
+
+    // Count the number of files
+    int fileCount = 0;
+
+    // Iterate through directory entries
+    printf("Files in the current directory:\n");
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip "." and ".." entries
+        if (entry->d_name[0] != '.') {
+            printf("%s\n", entry->d_name);
+            fileCount++;
+        }
+    }
+
+    // Close the directory
+    closedir(dir);
+
+    // Display the total number of files
+    printf("Total number of files: %d\n", fileCount);
+
+    return 0;
+}
+===================================================================================
+2)Write a C program which receives file names as command line arguments and display those filenames in ascending order according to their sizes. I) (e.g $ a.out a.txt b.txt c.txt, …)
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+typedef struct {
+    char *name;
+    off_t size;
+} FileInfo;
+
+int compareFileInfo(const void *a, const void *b) {
+    return ((FileInfo *)a)->size - ((FileInfo *)b)->size;
+}
+
+int main(int argc, char *argv[]) {
+    // Check if at least one filename is provided
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <file1> [file2] [file3] ...\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Create an array of FileInfo structures
+    FileInfo *fileInfoArray = malloc((argc - 1) * sizeof(FileInfo));
+
+    if (fileInfoArray == NULL) {
+        perror("Memory allocation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Get file sizes for each provided filename
+    for (int i = 1; i < argc; i++) {
+        struct stat fileStat;
+
+        if (stat(argv[i], &fileStat) == -1) {
+            perror("Error getting file information");
+            free(fileInfoArray);
+            exit(EXIT_FAILURE);
+        }
+
+        fileInfoArray[i - 1].name = argv[i];
+        fileInfoArray[i - 1].size = fileStat.st_size;
+    }
+
+    // Sort the array based on file sizes
+    qsort(fileInfoArray, argc - 1, sizeof(FileInfo), compareFileInfo);
+
+    // Display filenames in ascending order of sizes
+    printf("Filenames in ascending order of sizes:\n");
+    for (int i = 0; i < argc - 1; i++) {
+        printf("%s\n", fileInfoArray[i].name);
+    }
+
+    // Free allocated memory
+    free(fileInfoArray);
+
+    return 0;
+}
