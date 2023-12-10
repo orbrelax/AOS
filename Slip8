@@ -1,0 +1,114 @@
+1) Write a C program that redirects standard output to a file output.txt. (use of dup and open system call).
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+int main() {
+    // Open or create the output.txt file for writing
+    int fileDescriptor = open("output.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+    if (fileDescriptor == -1) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
+
+    // Duplicate the file descriptor to standard output (stdout)
+    if (dup2(fileDescriptor, STDOUT_FILENO) == -1) {
+        perror("Error duplicating file descriptor");
+        close(fileDescriptor);
+        exit(EXIT_FAILURE);
+    }
+
+    // Close the original file descriptor
+    close(fileDescriptor);
+
+    // Now, standard output is redirected to the output.txt file
+
+    // Print to stdout (which is now the file)
+    printf("This line will be written to the file.\n");
+    printf("Redirection is working!\n");
+
+    // Close stdout (optional)
+    close(STDOUT_FILENO);
+
+    return 0;
+}
+
+===================================================================
+2) Implement the following unix/linux command (use fork, pipe and exec system call)
+ls –l | wc –l.
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main() {
+    int pipefd[2];
+    pid_t lsPid, wcPid;
+
+    // Create a pipe
+    if (pipe(pipefd) == -1) {
+        perror("Pipe creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Create a child process for ls -l
+    lsPid = fork();
+
+    if (lsPid == -1) {
+        perror("Fork failed");
+        exit(EXIT_FAILURE);
+    }
+
+    if (lsPid == 0) { // Child process for ls -l
+        // Close the read end of the pipe
+        close(pipefd[0]);
+
+        // Redirect stdout to the write end of the pipe
+        dup2(pipefd[1], STDOUT_FILENO);
+
+        // Close the write end of the pipe
+        close(pipefd[1]);
+
+        // Execute ls -l
+        execlp("ls", "ls", "-l", (char *)NULL);
+        perror("Exec failed");
+        exit(EXIT_FAILURE);
+    } else { // Parent process
+        // Create a child process for wc -l
+        wcPid = fork();
+
+        if (wcPid == -1) {
+            perror("Fork failed");
+            exit(EXIT_FAILURE);
+        }
+
+        if (wcPid == 0) { // Child process for wc -l
+            // Close the write end of the pipe
+            close(pipefd[1]);
+
+            // Redirect stdin to the read end of the pipe
+            dup2(pipefd[0], STDIN_FILENO);
+
+            // Close the read end of the pipe
+            close(pipefd[0]);
+
+            // Execute wc -l
+            execlp("wc", "wc", "-l", (char *)NULL);
+            perror("Exec failed");
+            exit(EXIT_FAILURE);
+        } else { // Parent process
+            // Close both ends of the pipe
+            close(pipefd[0]);
+            close(pipefd[1]);
+
+            // Wait for both child processes to finish
+            waitpid(lsPid, NULL, 0);
+            waitpid(wcPid, NULL, 0);
+        }
+    }
+
+    return 0;
+}
